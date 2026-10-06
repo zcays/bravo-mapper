@@ -172,6 +172,10 @@
                 <p class="text-slate-600 mt-1 font-medium text-sm">Design 96-well reformatting and pooling workflows for Agilent Bravo liquid handler.</p>
             </div>
             <div class="flex flex-wrap gap-3 items-center">
+                <button id="btnHelp" class="flex items-center space-x-1.5 bg-white hover:bg-slate-50 text-slate-700 font-bold px-3.5 py-2.5 rounded-xl shadow-md border border-slate-200 transition-all text-xs uppercase tracking-wider">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>How to Use</span>
+                </button>
                 <div class="flex items-center space-x-3 bg-white px-4 py-2.5 rounded-xl shadow-md border border-slate-200">
                     <label for="volumeInput" class="text-xs font-bold text-slate-600 uppercase tracking-wider">Volume (µL):</label>
                     <input type="number" id="volumeInput" value="50" min="0.5" step="0.5" class="w-20 border-b-2 border-slate-300 focus:outline-none focus:border-blue-500 text-center text-lg font-black text-blue-700 bg-transparent">
@@ -263,6 +267,79 @@
         </div>
     </div>
 
+    <!-- Help / How to Use Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-gradient-to-r from-blue-700 to-indigo-600 text-white flex justify-between items-center">
+                <h3 class="text-base font-bold flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    How to Install & Use Bravo Pipetting Map Designer
+                </h3>
+                <button id="btnCloseHelp" class="text-white/80 hover:text-white p-1 rounded-lg">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto space-y-4 text-sm text-slate-700">
+                <div class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-blue-900 text-xs">
+                    <strong>Zero-Install Web App:</strong> Run offline by opening <code>index.html</code> directly, or host on GitHub Pages.
+                </div>
+
+                <div class="space-y-3.5">
+                    <div class="flex gap-3">
+                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">1</div>
+                        <div>
+                            <p class="font-bold text-slate-900">Set Transfer Volume</p>
+                            <p class="text-xs text-slate-500">Enter your target pipetting volume in µL in the top bar. You can change this between transfers for variable volumes.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">2</div>
+                        <div>
+                            <p class="font-bold text-slate-900">Map Transfers (Source &rarr; Destination)</p>
+                            <p class="text-xs text-slate-500">Click a well on the <strong>Source Plate</strong> (left) to select it (glowing blue border), then click a well on the <strong>Destination Plate</strong> (right) to assign the transfer.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">3</div>
+                        <div>
+                            <p class="font-bold text-slate-900">Multi-Dispense Mode (Aliquoting)</p>
+                            <p class="text-xs text-slate-500">Turn on <strong>Multi-dispense mode</strong> to click multiple destination wells sequentially from a single selected source well.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">4</div>
+                        <div>
+                            <p class="font-bold text-slate-900">Pooling Workflow</p>
+                            <p class="text-xs text-slate-500">Click different source wells and target the same destination well. The destination well accumulates liquid and displays total pooled volume.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">5</div>
+                        <div>
+                            <p class="font-bold text-slate-900">Overflow Protection</p>
+                            <p class="text-xs text-slate-500">Standard 96-well capacity is ~300µL. Destination wells exceeding 300µL display pulsing red overflow warnings.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3">
+                        <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold flex items-center justify-center text-xs shrink-0">6</div>
+                        <div>
+                            <p class="font-bold text-slate-900">Inspect, Edit & Export</p>
+                            <p class="text-xs text-slate-500">Click any well to inspect its transfer history and delete specific steps. Use <strong>Copy CSV</strong> or <strong>Download</strong> for Agilent Bravo / VWorks.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-3 bg-slate-50 border-t border-slate-200 flex justify-end">
+                <button id="btnCloseHelpFooter" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-xl text-xs">Got it</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Script Area -->
     <script>
         const MAX_WELL_VOLUME = 300;
@@ -292,6 +369,10 @@
             btnCopy: document.getElementById('btnCopy'),
             btnDownload: document.getElementById('btnDownload'),
             btnClear: document.getElementById('btnClear'),
+            btnHelp: document.getElementById('btnHelp'),
+            helpModal: document.getElementById('helpModal'),
+            btnCloseHelp: document.getElementById('btnCloseHelp'),
+            btnCloseHelpFooter: document.getElementById('btnCloseHelpFooter'),
         };
 
         // Initialize 96-Well Plate in Standard SBS Array
@@ -330,6 +411,14 @@
 
         renderPlate(DOMElements.sourcePlate, 'source');
         renderPlate(DOMElements.destPlate, 'dest');
+
+        // Help Modal Events
+        DOMElements.btnHelp.addEventListener('click', () => DOMElements.helpModal.classList.remove('hidden'));
+        DOMElements.btnCloseHelp.addEventListener('click', () => DOMElements.helpModal.classList.add('hidden'));
+        DOMElements.btnCloseHelpFooter.addEventListener('click', () => DOMElements.helpModal.classList.add('hidden'));
+        DOMElements.helpModal.addEventListener('click', (e) => {
+            if (e.target === DOMElements.helpModal) DOMElements.helpModal.classList.add('hidden');
+        });
 
         // Multi-dispense mode toggle
         DOMElements.multiModeToggle.addEventListener('change', (e) => {
