@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bravo Pipetting Map Designer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Standard SBS/SLAS 96-Well Microplate Chassis */
+        .plate-chassis {
+            background: #f8fafc;
+            border: 3px solid #cbd5e1;
+            border-radius: 12px;
+            padding: 12px 14px 14px 12px;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.05), 0 6px 16px -2px rgba(0, 0, 0, 0.08);
+            position: relative;
+            display: inline-block;
+            user-select: none;
+        }
+
+        /* Standard A1 orientation notch in top-left */
+        .plate-notch {
+            position: absolute;
+            top: 4px;
+            left: 5px;
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: #94a3b8;
+            letter-spacing: -0.5px;
+            line-height: 1;
+        }
+
+        /* 96-Well Array: 1 header col + 12 well cols, 1 header row + 8 well rows */
+        .plate-grid {
+            display: grid !important;
+            grid-template-columns: 1.6rem repeat(12, 2.1rem) !important;
+            grid-template-rows: 1.6rem repeat(8, 2.1rem) !important;
+            gap: 4px !important;
+            align-items: center;
+            justify-items: center;
+        }
+
+        /* Circular Wells */
+        .well {
+            width: 2.1rem;
+            height: 2.1rem;
+            aspect-ratio: 1 / 1;
+            border-radius: 50%;
+            border: 1.5px solid #cbd5e1;
+            background-color: #ffffff;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.62rem;
+            font-weight: 600;
+            color: #64748b;
+            cursor: pointer;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .well:hover {
+            transform: scale(1.15);
+            z-index: 20;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+
+        .well-label {
+            width: 1.6rem;
+            height: 1.6rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #64748b;
+            user-select: none;
+        }
+
+        /* Well Interactive States */
+        .source-selected {
+            border-color: #2563eb !important;
+            background-color: #eff6ff !important;
+            box-shadow: 0 0 0 3.5px rgba(37, 99, 235, 0.35) !important;
+            transform: scale(1.15) !important;
+            z-index: 25 !important;
+            color: #1d4ed8 !important;
+            font-weight: 700 !important;
+        }
+        
+        .source-mapped {
+            background-color: #dbeafe !important;
+            border-color: #3b82f6 !important;
+            color: #1d4ed8 !important;
+        }
+
+        .dest-mapped {
+            border-color: #22c55e !important;
+            color: #15803d !important;
+        }
+        
+        .dest-warning {
+            border-color: #ef4444 !important;
+            color: #b91c1c !important;
+            animation: pulse-red 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite !important;
+        }
+
+        @keyframes pulse-red {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.85; transform: scale(1.05); }
+        }
+        
+        /* Glassmorphism panels */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+        
+        body {
+            background: radial-gradient(circle at 10% 20%, rgb(239, 246, 255) 0%, rgb(224, 238, 255) 90%);
+            min-height: 100vh;
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        .fill-indicator {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(34, 197, 94, 0.45);
+            z-index: 0;
+            transition: height 0.25s ease;
+            pointer-events: none;
+        }
+        .well-text {
+            position: relative;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .dest-warning .fill-indicator {
+            background-color: rgba(239, 68, 68, 0.55);
+        }
+    </style>
+</head>
+<body class="text-slate-800 font-sans p-4 lg:p-6">
+    <div class="max-w-[1500px] mx-auto space-y-6">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <h1 class="text-3xl font-black tracking-tight text-slate-900 bg-clip-text text-transparent bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-600">
+                    Bravo Pipetting Map Designer
+                </h1>
+                <p class="text-slate-600 mt-1 font-medium text-sm">Design 96-well reformatting and pooling workflows for Agilent Bravo liquid handler.</p>
+            </div>
+            <div class="flex flex-wrap gap-3 items-center">
+                <div class="flex items-center space-x-3 bg-white px-4 py-2.5 rounded-xl shadow-md border border-slate-200">
+                    <label for="volumeInput" class="text-xs font-bold text-slate-600 uppercase tracking-wider">Volume (µL):</label>
+                    <input type="number" id="volumeInput" value="50" min="0.5" step="0.5" class="w-20 border-b-2 border-slate-300 focus:outline-none focus:border-blue-500 text-center text-lg font-black text-blue-700 bg-transparent">
+                </div>
+                <label class="flex items-center space-x-3 bg-white px-4 py-2.5 rounded-xl shadow-md border border-slate-200 cursor-pointer select-none">
+                    <div class="relative">
+                        <input type="checkbox" id="multiModeCheckbox" class="sr-only">
+                        <div class="block bg-slate-200 w-10 h-6 rounded-full transition-colors" id="toggleBg"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform" id="toggleDot"></div>
+                    </div>
+                    <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Multi-dispense mode</span>
+                </label>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <div class="grid grid-cols-1 2xl:grid-cols-4 gap-6">
+            <!-- Plates Area (96-well arrays) -->
+            <div class="2xl:col-span-3 flex flex-col xl:flex-row gap-6">
+                <!-- Source Plate -->
+                <div class="glass-panel p-5 rounded-2xl relative flex-1 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <h2 class="text-base font-bold flex items-center text-blue-900">
+                            <span class="w-3 h-3 rounded-full bg-blue-500 mr-2 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></span> Source Plate (96-Well)
+                        </h2>
+                        <span id="sourceUsedBadge" class="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-full">0/96 Wells Used</span>
+                    </div>
+                    <div class="w-full overflow-x-auto pb-2 flex justify-center">
+                        <div id="sourcePlateContainer">
+                            <!-- Generated by JS -->
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2 text-center">Click a source well to activate it for transfer.</p>
+                </div>
+
+                <!-- Destination Plate -->
+                <div class="glass-panel p-5 rounded-2xl relative flex-1 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <h2 class="text-base font-bold flex items-center text-green-900">
+                            <span class="w-3 h-3 rounded-full bg-green-500 mr-2 shadow-[0_0_8px_rgba(74,222,128,0.8)]"></span> Destination Plate (96-Well)
+                        </h2>
+                        <span id="destUsedBadge" class="text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2.5 py-1 rounded-full">0/96 Wells Mapped</span>
+                    </div>
+                    <div class="w-full overflow-x-auto pb-2 flex justify-center">
+                        <div id="destPlateContainer">
+                            <!-- Generated by JS -->
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-2 text-center">Click destination wells to deposit volume (Max ~300µL).</p>
+                </div>
+            </div>
+
+            <!-- Side Panel Area -->
+            <div class="flex flex-col gap-6 2xl:col-span-1">
+                <!-- Transfer Script Output -->
+                <div class="glass-panel p-5 rounded-2xl flex flex-col shadow-lg border-t-4 border-t-blue-500">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider">Agilent Bravo CSV Map</h2>
+                        <span class="text-xs bg-blue-100 px-2.5 py-0.5 rounded-full font-bold text-blue-700" id="transferCount">0 transfers</span>
+                    </div>
+                    <textarea id="csvOutput" readonly class="w-full h-36 bg-slate-50 border border-slate-200 rounded-xl p-3 font-mono text-xs resize-none focus:outline-none mb-4 whitespace-pre shadow-inner text-slate-700" placeholder="A1, A1, 50&#10;..."></textarea>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="btnCopy" class="bg-slate-800 hover:bg-slate-700 text-white font-bold py-2 px-3 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center text-xs">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            Copy CSV
+                        </button>
+                        <button id="btnDownload" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold py-2 px-3 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center text-xs">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                            Download
+                        </button>
+                        <button id="btnClear" class="col-span-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2 px-3 rounded-xl transition-all border border-red-200 active:scale-95 text-xs mt-1">
+                            Clear All Mappings
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Well Inspector Panel -->
+                <div class="glass-panel p-5 rounded-2xl flex-1 flex flex-col shadow-lg max-h-[380px]">
+                    <h2 class="text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-3">Well Inspector</h2>
+                    <div id="wellInspector" class="text-xs text-slate-500 italic mb-3 bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-center">
+                        Click on any well to view transfer details.
+                    </div>
+                    <div id="wellTransfersList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Area -->
+    <script>
+        const MAX_WELL_VOLUME = 300;
+        const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const cols = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+        let state = {
+            sourceWell: null,
+            multiDispense: false,
+            transfers: [], // { id, source, dest, volume }
+            inspectingWell: { type: null, id: null }, // type: 'source' or 'dest'
+        };
+
+        const DOMElements = {
+            sourcePlate: document.getElementById('sourcePlateContainer'),
+            destPlate: document.getElementById('destPlateContainer'),
+            sourceUsedBadge: document.getElementById('sourceUsedBadge'),
+            destUsedBadge: document.getElementById('destUsedBadge'),
+            volumeInput: document.getElementById('volumeInput'),
+            multiModeToggle: document.getElementById('multiModeCheckbox'),
+            toggleBg: document.getElementById('toggleBg'),
+            toggleDot: document.getElementById('toggleDot'),
+            csvOutput: document.getElementById('csvOutput'),
+            transferCount: document.getElementById('transferCount'),
+            wellInspector: document.getElementById('wellInspector'),
+            wellTransfersList: document.getElementById('wellTransfersList'),
+            btnCopy: document.getElementById('btnCopy'),
+            btnDownload: document.getElementById('btnDownload'),
+            btnClear: document.getElementById('btnClear'),
+        };
+
+        // Initialize 96-Well Plate in Standard SBS Array
+        function renderPlate(container, type) {
+            let html = `
+                <div class="plate-chassis">
+                    <div class="plate-notch">A1▾</div>
+                    <div class="plate-grid">
+            `;
+            
+            // Empty top-left corner
+            html += '<div class="well-label"></div>';
+            
+            // Column Headers (1 to 12)
+            cols.forEach(c => {
+                html += `<div class="well-label">${c}</div>`;
+            });
+
+            // Rows (A to H with 12 wells per row)
+            rows.forEach(r => {
+                html += `<div class="well-label">${r}</div>`; // Row Header
+                cols.forEach(c => {
+                    const wellId = `${r}${c}`;
+                    html += `
+                        <div class="well ${type}-well" data-well="${wellId}" data-type="${type}" title="${wellId}">
+                            <div class="fill-indicator" style="height: 0%"></div>
+                            <span class="well-text">${wellId}</span>
+                        </div>
+                    `;
+                });
+            });
+
+            html += '</div></div>';
+            container.innerHTML = html;
+        }
+
+        renderPlate(DOMElements.sourcePlate, 'source');
+        renderPlate(DOMElements.destPlate, 'dest');
+
+        // Multi-dispense mode toggle
+        DOMElements.multiModeToggle.addEventListener('change', (e) => {
+            state.multiDispense = e.target.checked;
+            updateToggleVisuals();
+            updateUI();
+        });
+
+        function updateToggleVisuals() {
+            if (state.multiDispense) {
+                DOMElements.toggleBg.classList.replace('bg-slate-200', 'bg-blue-600');
+                DOMElements.toggleDot.classList.add('translate-x-4');
+            } else {
+                DOMElements.toggleBg.classList.replace('bg-blue-600', 'bg-slate-200');
+                DOMElements.toggleDot.classList.remove('translate-x-4');
+            }
+        }
+
+        // Well Click Handling
+        document.querySelectorAll('.well').forEach(el => {
+            el.addEventListener('click', handleWellClick);
+        });
+
+        // Clear All Button
+        DOMElements.btnClear.addEventListener('click', () => {
+            if (state.transfers.length > 0 && confirm("Are you sure you want to clear all mappings?")) {
+                state.transfers = [];
+                state.sourceWell = null;
+                state.inspectingWell = { type: null, id: null };
+                updateUI();
+            }
+        });
+
+        // Copy CSV Button
+        DOMElements.btnCopy.addEventListener('click', () => {
+            if (!DOMElements.csvOutput.value) return;
+            DOMElements.csvOutput.select();
+            document.execCommand('copy');
+            const originalHTML = DOMElements.btnCopy.innerHTML;
+            DOMElements.btnCopy.innerHTML = `<svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied!`;
+            DOMElements.btnCopy.classList.add('bg-green-600');
+            setTimeout(() => {
+                DOMElements.btnCopy.innerHTML = originalHTML;
+                DOMElements.btnCopy.classList.remove('bg-green-600');
+            }, 1500);
+        });
+
+        // Download CSV Button
+        DOMElements.btnDownload.addEventListener('click', () => {
+            if (state.transfers.length === 0) {
+                alert("No mappings to download.");
+                return;
+            }
+            const csv = DOMElements.csvOutput.value;
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', 'pipetting_map.csv');
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+
+        function handleWellClick(e) {
+            const wellEl = e.currentTarget;
+            const wellId = wellEl.getAttribute('data-well');
+            const type = wellEl.getAttribute('data-type');
+            
+            if (type === 'source') {
+                if (state.sourceWell === wellId) {
+                    state.sourceWell = null; // Toggle Deselect
+                } else {
+                    state.sourceWell = wellId; // Select
+                }
+                state.inspectingWell = { type: 'source', id: wellId };
+            } else if (type === 'dest') {
+                if (state.sourceWell) {
+                    const volume = parseFloat(DOMElements.volumeInput.value) || 0;
+                    if (volume <= 0) {
+                        alert('Please enter a valid transfer volume greater than 0.');
+                        return;
+                    }
+                    
+                    state.transfers.push({
+                        id: Date.now().toString(36) + Math.random().toString(36).substr(2, 5),
+                        source: state.sourceWell,
+                        dest: wellId,
+                        volume: volume
+                    });
+
+                    if (!state.multiDispense) {
+                        state.sourceWell = null;
+                    }
+                }
+                state.inspectingWell = { type: 'dest', id: wellId };
+            }
+            updateUI();
+        }
+
+        function deleteTransfer(id) {
+            state.transfers = state.transfers.filter(t => t.id !== id);
+            updateUI();
+        }
+
+        function updateUI() {
+            // Aggregate transfer totals
+            const destVolumes = {};
+            const sourceMapped = new Set();
+            const destMapped = new Set();
+            
+            state.transfers.forEach(t => {
+                destVolumes[t.dest] = (destVolumes[t.dest] || 0) + t.volume;
+                sourceMapped.add(t.source);
+                destMapped.add(t.dest);
+            });
+
+            // Update badge counters
+            DOMElements.sourceUsedBadge.textContent = `${sourceMapped.size}/96 Wells Used`;
+            DOMElements.destUsedBadge.textContent = `${destMapped.size}/96 Wells Mapped`;
+
+            // Update Source Plate Wells
+            document.querySelectorAll('.source-well').forEach(el => {
+                const wellId = el.getAttribute('data-well');
+                el.className = `well source-well ${state.sourceWell === wellId ? 'source-selected' : sourceMapped.has(wellId) ? 'source-mapped' : ''}`;
+                
+                // Active well inspecting ring
+                if (state.inspectingWell.type === 'source' && state.inspectingWell.id === wellId) {
+                    el.classList.add('ring-2', 'ring-purple-500', 'ring-offset-1');
+                }
+            });
+
+            // Update Destination Plate Wells
+            document.querySelectorAll('.dest-well').forEach(el => {
+                const wellId = el.getAttribute('data-well');
+                const vol = destVolumes[wellId] || 0;
+                
+                let classes = 'well dest-well ';
+                const fillIndicator = el.querySelector('.fill-indicator');
+                
+                if (vol > 0) {
+                    if (vol > MAX_WELL_VOLUME) {
+                        classes += 'dest-warning ';
+                        el.title = `${wellId} - ${vol}µL (OVERFLOW WARNING: Exceeds ${MAX_WELL_VOLUME}µL max)`;
+                        fillIndicator.style.height = '100%';
+                    } else {
+                        classes += 'dest-mapped ';
+                        el.title = `${wellId} - Total: ${vol}µL`;
+                        const fillPercent = Math.min(100, (vol / MAX_WELL_VOLUME) * 100);
+                        fillIndicator.style.height = `${fillPercent}%`;
+                    }
+                } else {
+                    el.title = wellId;
+                    fillIndicator.style.height = '0%';
+                }
+                
+                if (state.inspectingWell.type === 'dest' && state.inspectingWell.id === wellId) {
+                    classes += 'ring-2 ring-purple-500 ring-offset-1 ';
+                }
+
+                el.className = classes;
+
+                // Cursor Hint
+                if (state.sourceWell) {
+                    el.style.cursor = 'crosshair';
+                    el.title = `Click to transfer ${parseFloat(DOMElements.volumeInput.value) || 0}µL from ${state.sourceWell} to ${wellId}`;
+                } else {
+                    el.style.cursor = 'pointer';
+                }
+            });
+
+            // Update CSV Output Format: [SourceWell], [DestinationWell], [Volume]
+            let csvText = '';
+            state.transfers.forEach(t => {
+                csvText += `${t.source}, ${t.dest}, ${t.volume}\n`;
+            });
+            DOMElements.csvOutput.value = csvText;
+            DOMElements.transferCount.textContent = `${state.transfers.length} transfers`;
+            DOMElements.csvOutput.scrollTop = DOMElements.csvOutput.scrollHeight;
+
+            updateInspector(destVolumes);
+        }
+
+        function updateInspector(destVolumes) {
+            if (!state.inspectingWell.id) {
+                DOMElements.wellInspector.innerHTML = `Click on any well to view transfer details.`;
+                DOMElements.wellTransfersList.innerHTML = '';
+                return;
+            }
+
+            const { type, id } = state.inspectingWell;
+            const isSource = type === 'source';
+            
+            let html = `
+                <div class="flex items-center justify-between bg-${isSource ? 'blue' : 'green'}-50 p-2.5 rounded-lg border border-${isSource ? 'blue' : 'green'}-100">
+                    <div>
+                        <div class="text-[10px] font-bold text-${isSource ? 'blue' : 'green'}-600 uppercase tracking-wider">${isSource ? 'Source' : 'Destination'} Well</div>
+                        <div class="text-xl font-black text-slate-800">${id}</div>
+                    </div>
+            `;
+            
+            if (!isSource) {
+                const vol = (destVolumes && destVolumes[id]) || 0;
+                const isWarning = vol > MAX_WELL_VOLUME;
+                html += `
+                    <div class="text-right">
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Volume</div>
+                        <div class="text-base font-bold ${isWarning ? 'text-red-600' : 'text-green-700'}">${vol} <span class="text-xs">µL</span></div>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            DOMElements.wellInspector.innerHTML = html;
+
+            let relevantTransfers = state.transfers.filter(t => isSource ? t.source === id : t.dest === id);
+
+            if (relevantTransfers.length === 0) {
+                DOMElements.wellTransfersList.innerHTML = `
+                    <div class="flex flex-col items-center justify-center py-6 text-slate-400">
+                        <svg class="w-7 h-7 mb-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        <p class="text-xs">No transfers mapped yet.</p>
+                    </div>`;
+                return;
+            }
+
+            let listHtml = '';
+            relevantTransfers.forEach((t, index) => {
+                listHtml += `
+                    <div class="group flex items-center justify-between bg-white p-2.5 rounded-lg border border-slate-100 shadow-sm hover:shadow transition-shadow relative overflow-hidden">
+                        <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-blue-400 to-green-400"></div>
+                        <div class="flex items-center space-x-2.5 ml-1.5">
+                            <div class="text-[10px] font-bold text-slate-400 w-3">${index + 1}.</div>
+                            <div class="flex items-center space-x-1.5">
+                                <span class="font-mono font-bold text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">${t.source}</span>
+                                <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                                <span class="font-mono font-bold text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">${t.dest}</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span class="font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-xs">${t.volume}µL</span>
+                            <button onclick="deleteTransfer('${t.id}')" class="text-slate-300 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50 focus:outline-none" title="Delete Transfer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            DOMElements.wellTransfersList.innerHTML = listHtml;
+        }
+
+        window.deleteTransfer = deleteTransfer;
+        updateUI();
+    </script>
+</body>
+</html>
