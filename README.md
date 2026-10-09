@@ -38,7 +38,7 @@ A lightweight, responsive, single-page web application to design liquid handling
   - Real-time running total volume calculated per destination well.
   - Dynamic liquid level indicators with automated warning alerts when volume exceeds standard 96-well capacity (~300 µL).
 - **Well Inspector & Script Output**:
-  - Live preview formatted strictly for Agilent Bravo transfer scripts: `[SourceWell], [DestinationWell], [Volume]`.
+  - Live preview formatted strictly for Agilent Bravo transfer scripts: `Source Well ID,Vol to Transfer,Destination Well ID`.
   - Inspector side-panel to view details and delete individual transfer steps.
   - One-click **Copy CSV** and **Download .csv**.
 
@@ -129,25 +129,28 @@ If you prefer running through a local development server:
 ### 6. Exporting to Agilent Bravo
 - **Live Script Area**: Continuously displays the formatted pipetting commands.
 - **Copy CSV**: Copies the mapping directly to your clipboard for pasting into spreadsheets or VWorks.
-- **Download**: Saves a ready-to-use `pipetting_map.csv` file to your computer.
+- **CSV File Name**: Rename the export file (defaults to `pipetting_map.csv`) directly from the input box.
+- **Download**: Saves the ready-to-use `.csv` file with your specified file name to your computer.
 - **Clear All Mappings**: Resets both plates and starts a clean design.
 
 ---
 
 ## CSV Output Format
 
-The output strictly complies with standard liquid handling hit-pick and reformatting mapping matrices:
+The output strictly complies with standard Agilent Bravo hit-pick and reformatting transfer matrices:
 
 ```csv
-[SourceWell], [DestinationWell], [Volume]
+Source Well ID,Vol to Transfer,Destination Well ID
+[SourceWell],[Volume],[DestinationWell]
 ```
 
 ### Example:
 ```csv
-A1, A1, 100
-A2, A2, 200
-B1, C3, 50
-B2, C3, 50
+Source Well ID,Vol to Transfer,Destination Well ID
+A1,1,B1
+C1,2,D1
+E1,3,F1
+G1,4,H1
 ```
 
 This format can be directly imported into **Agilent VWorks** pipetting hit-pick tasks or custom automation scripts.
